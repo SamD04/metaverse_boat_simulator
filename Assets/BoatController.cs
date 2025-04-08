@@ -18,7 +18,6 @@ public class BoatController : MonoBehaviour
     [Header("Water Physics")]
     public float waterDrag = 0.1f;
     public float waterAngularDrag = 0.5f;
-    public float waveImpactFactor = 0.3f;
 
     private Rigidbody rb;
     private float currentThrottle;
@@ -121,10 +120,5 @@ public class BoatController : MonoBehaviour
         // Apply drag
         rb.AddForce(-rb.velocity * waterDrag * Time.fixedDeltaTime, ForceMode.VelocityChange);
         rb.AddTorque(-rb.angularVelocity * waterAngularDrag * Time.fixedDeltaTime, ForceMode.VelocityChange);
-
-        // Additional wave impact (optional)
-        float waveHeight = waveScript.instance.GetWaveHeight(transform.position.x);
-        float waveEffect = (waveHeight - transform.position.y) * waveImpactFactor;
-        rb.AddForce(Vector3.up * waveEffect, ForceMode.Acceleration);
     }
 }
