@@ -7,26 +7,30 @@ public class BoatController : MonoBehaviour
     public float maxForwardSpeed = 20f;
     public float maxReverseSpeed = 10f;
     public float acceleration = 5f;
-    public float deceleration = 8f;
-    public float reverseAcceleration = 3f;
+    public float deceleration = 3f;
+    public float reverseAcceleration = 2f;
 
     [Header("Steering Settings")]
-    public float turnRate = 1.5f;
-    public float speedTurnDampening = 0.7f; // How much speed affects turning
-    public float turnDrag = 0.5f; // Resistance when turning
+    public float turnRate = 2.0f;
+    public float speedTurnDampening = 0.5f;
+    public float turnDrag = 0.5f;
 
     [Header("Water Physics")]
-    public float waterDrag = 0.1f;
-    public float waterAngularDrag = 0.5f;
+    public float waterDrag = 0.3f;
+    public float waterAngularDrag = 1.0f;
 
     private Rigidbody rb;
     private float currentThrottle;
     private float currentSpeed;
+    private float lastSteerInput = 0f;
+
+    private Vector3 initialCenterOfMass;
 
     private void Awake()
     {
         rb = GetComponent<Rigidbody>();
-        rb.centerOfMass = new Vector3(0, -0.5f, 0); // Lower center for stability
+        initialCenterOfMass = rb.centerOfMass;
+        rb.centerOfMass = new Vector3(0, -0.5f, 0);
     }
 
     private void Update()
@@ -44,37 +48,40 @@ public class BoatController : MonoBehaviour
     private void HandleInput()
     {
         float throttleInput = Input.GetAxis("Vertical");
+        float steerInput = Input.GetAxis("Horizontal");
 
-        // Forward/Reverse input
         if (throttleInput > 0)
         {
-            // Accelerating forward
             currentThrottle = Mathf.MoveTowards(currentThrottle, throttleInput, acceleration * Time.deltaTime);
         }
         else if (throttleInput < 0)
         {
-            // Reversing or braking
             if (currentSpeed > 0.1f)
             {
-                // Braking first
                 currentThrottle = Mathf.MoveTowards(currentThrottle, 0, deceleration * Time.deltaTime);
             }
             else
             {
-                // Reversing
                 currentThrottle = Mathf.MoveTowards(currentThrottle, throttleInput, reverseAcceleration * Time.deltaTime);
             }
         }
         else
         {
-            // No input - natural deceleration
             currentThrottle = Mathf.MoveTowards(currentThrottle, 0, deceleration * Time.deltaTime);
+        }
+
+        if (Mathf.Abs(currentSpeed) > 0.5f)
+        {
+            lastSteerInput = Mathf.Lerp(lastSteerInput, steerInput, 0.1f);
+        }
+        else
+        {
+            lastSteerInput = steerInput;
         }
     }
 
     private void ApplyMovement()
     {
-        // Calculate current speed
         if (currentThrottle > 0)
         {
             currentSpeed = Mathf.Lerp(currentSpeed, maxForwardSpeed * currentThrottle, acceleration * Time.fixedDeltaTime);
@@ -88,27 +95,20 @@ public class BoatController : MonoBehaviour
             currentSpeed = Mathf.Lerp(currentSpeed, 0, deceleration * Time.fixedDeltaTime);
         }
 
-        // Apply forward force
         Vector3 forwardForce = transform.forward * currentSpeed;
         rb.AddForce(forwardForce, ForceMode.Acceleration);
     }
 
     private void ApplySteering()
     {
-        float steerInput = Input.GetAxis("Horizontal");
-
-        // Only allow steering when moving
         if (Mathf.Abs(currentSpeed) > 0.1f)
         {
-            // Turning is more responsive at lower speeds
             float turnFactor = 1f - (Mathf.Abs(currentSpeed) / maxForwardSpeed * speedTurnDampening);
-            float turnForce = steerInput * turnRate * turnFactor * Mathf.Sign(currentSpeed);
+            float turnForce = lastSteerInput * turnRate * turnFactor * Mathf.Sign(currentSpeed);
 
-            // Apply rotation
             rb.AddTorque(0, turnForce, 0, ForceMode.Acceleration);
 
-            // Add some drag when turning to make it feel more "water-like"
-            if (Mathf.Abs(steerInput) > 0.1f)
+            if (Mathf.Abs(lastSteerInput) > 0.1f)
             {
                 rb.velocity *= (1f - turnDrag * Time.fixedDeltaTime);
             }
@@ -117,7 +117,6 @@ public class BoatController : MonoBehaviour
 
     private void ApplyWaterPhysics()
     {
-        // Apply drag
         rb.AddForce(-rb.velocity * waterDrag * Time.fixedDeltaTime, ForceMode.VelocityChange);
         rb.AddTorque(-rb.angularVelocity * waterAngularDrag * Time.fixedDeltaTime, ForceMode.VelocityChange);
     }
