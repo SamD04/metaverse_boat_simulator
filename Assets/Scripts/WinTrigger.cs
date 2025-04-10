@@ -37,7 +37,7 @@ public class WinTrigger : MonoBehaviour
         {
             Vector3 horizontalVelocity = new Vector3(playerRb.velocity.x, 0f, playerRb.velocity.z);
 
-            if (horizontalVelocity.magnitude < 1f)
+            if (horizontalVelocity.magnitude < 0.6f)
             {
                 if (!countingDown)
                 {
